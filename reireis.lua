@@ -1,7 +1,7 @@
 --// =====================================================
---// 👑 REI REIS | SUPREMO - TOTAL CONTROL EDITION
+--// 🧘 REI REIS | SUPREMO - CHILL EDITION
 --// STATUS: FASE BETA ⚠️
---// DISPOSITIVO: OTIMIZADO MOBILE
+--// DISPOSITIVO: OTIMIZADO MOBILE (Moto G20)
 --// =====================================================
 
 local Color3_fromRGB = Color3.fromRGB
@@ -26,9 +26,10 @@ local InfiniteJumpEnabled = false
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "👑 REI REIS | SUPREMO",
-   LoadingTitle = "Iniciando Sistema Rei Reis...",
-   LoadingSubtitle = "STATUS: ONLINE 👑",
+   Name = "REI REIS | SUPREMO", 
+   Icon = "rbxassetid://13511783015", -- ID da Imagem do Avatar Roblox Sentado
+   LoadingTitle = "Sentando no Trono Rei Reis...",
+   LoadingSubtitle = "STATUS: ONLINE",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false,
    Theme = "DarkBlue"
@@ -37,7 +38,7 @@ local Window = Rayfield:CreateWindow({
 --// AVISO DE FASE BETA
 Rayfield:Notify({
    Title = "⚠️ AVISO: FASE BETA",
-   Content = "Este script está em fase Beta. Podem ocorrer bugs, funções podem não funcionar ou dar erro. Estamos em testes!",
+   Content = "Este script está em fase Beta. Podem ocorrer bugs ou funções falharem. Estamos em testes!",
    Duration = 8,
    Image = 4483345998,
 })
@@ -131,6 +132,13 @@ PlayerTab:CreateToggle({
    Callback = function(Value) InfiniteJumpEnabled = Value end,
 })
 
+--// CORREÇÃO PULO INFINITO
+UIS.JumpRequest:Connect(function()
+    if InfiniteJumpEnabled and Player.Character and Player.Character:FindFirstChildOfClass("Humanoid") then
+        Player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
+
 --// LOOPS DE EXECUÇÃO
 RunService.RenderStepped:Connect(function()
     if MiraAtiva then
@@ -161,15 +169,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-UIS.JumpRequest:Connect(function()
-    if InfiniteJumpEnabled and Player.Character and Player.Character:FindFirstChild("Humanoid") then
-        Player.Character.Humanoid:ChangeState("Jumping")
-    end
-end)
-
--- NOTIFICAÇÃO FINAL ALTERADA
+-- NOTIFICAÇÃO FINAL
 Rayfield:Notify({
-   Title = "👑 REI REIS",
+   Title = "🧘 REI REIS",
    Content = "SISTEMA CARREGADO",
    Duration = 5
 })
