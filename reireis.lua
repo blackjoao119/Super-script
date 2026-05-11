@@ -1,7 +1,7 @@
 --// =====================================================
 --// 👑 REI REIS | SUPREMO - TOTAL CONTROL EDITION
---// Mobile Optimized (Moto G20)
---// STATUS: ONLINE 👑
+--// STATUS: FASE BETA ⚠️
+--// DISPOSITIVO: OTIMIZADO MOBILE
 --// =====================================================
 
 local Color3_fromRGB = Color3.fromRGB
@@ -18,7 +18,7 @@ local Camera = workspace.CurrentCamera
 local MiraAtiva = false
 local WallshotAtivo = false
 local EspAtivo = false
-local PuxadaMira = 0.16 -- Valor padrão
+local PuxadaMira = 0.16
 local WalkSpeedValue = 100
 local InfiniteJumpEnabled = false
 
@@ -27,11 +27,19 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "👑 REI REIS | SUPREMO",
-   LoadingTitle = "Calibrando Sensibilidade Rei Reis...",
+   LoadingTitle = "Iniciando Sistema Rei Reis...",
    LoadingSubtitle = "STATUS: ONLINE 👑",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false,
    Theme = "DarkBlue"
+})
+
+--// AVISO DE FASE BETA
+Rayfield:Notify({
+   Title = "⚠️ AVISO: FASE BETA",
+   Content = "Este script está em fase Beta. Podem ocorrer bugs, funções podem não funcionar ou dar erro. Estamos em testes!",
+   Duration = 8,
+   Image = 4483345998,
 })
 
 --// LÓGICA DE ALVO
@@ -41,16 +49,16 @@ local function getTarget()
     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
     for _, p in pairs(Players:GetPlayers()) do
-        if p ~= Player and p.Character and p.Character:FindFirstChild("Head") then
+        if p ~= Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             local hum = p.Character:FindFirstChild("Humanoid")
             if hum and hum.Health > 0 and (p.Team ~= Player.Team or Player.Team == nil) then
-                local pos, visible = Camera:WorldToViewportPoint(p.Character.Head.Position)
+                local pos, visible = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
                 
                 if WallshotAtivo or visible then
                     local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
                     if dist < 400 and dist < shortest then
                         shortest = dist
-                        closest = p.Character.Head
+                        closest = p.Character.HumanoidRootPart
                     end
                 end
             end
@@ -64,8 +72,8 @@ local CombatTab = Window:CreateTab("🔫 Combate", 10734950020)
 local VisualTab = Window:CreateTab("👁 Visual", 10734951477)
 local PlayerTab = Window:CreateTab("🏃 Player", 10734981350)
 
--- COMBATE
-CombatTab:CreateSection("Aimbot Customizado")
+-- SEÇÃO COMBATE
+CombatTab:CreateSection("Aimbot & Precisão")
 
 CombatTab:CreateToggle({
    Name = "Ativar Mira Suave",
@@ -79,9 +87,7 @@ CombatTab:CreateSlider({
    Increment = 0.01,
    Suffix = "Força",
    CurrentValue = 0.16,
-   Callback = function(Value)
-      PuxadaMira = Value
-   end,
+   Callback = function(Value) PuxadaMira = Value end,
 })
 
 CombatTab:CreateToggle({
@@ -90,7 +96,7 @@ CombatTab:CreateToggle({
    Callback = function(Value) WallshotAtivo = Value end,
 })
 
--- VISUAL
+-- SEÇÃO VISUAL
 VisualTab:CreateSection("ESP Inteligente")
 VisualTab:CreateToggle({
    Name = "Raio-X (Verde/Vermelho)",
@@ -99,13 +105,15 @@ VisualTab:CreateToggle({
       EspAtivo = Value
       if not Value then
          for _, p in pairs(Players:GetPlayers()) do
-            if p.Character and p.Character:FindFirstChild("REI_ESP") then p.Character.REI_ESP:Destroy() end
+            if p.Character and p.Character:FindFirstChild("REI_ESP") then 
+                p.Character.REI_ESP:Destroy() 
+            end
          end
       end
    end,
 })
 
--- PLAYER
+-- SEÇÃO PLAYER
 PlayerTab:CreateSection("Movimentação")
 PlayerTab:CreateSlider({
    Name = "Velocidade Rei",
@@ -114,9 +122,6 @@ PlayerTab:CreateSlider({
    CurrentValue = 100,
    Callback = function(Value)
       WalkSpeedValue = Value
-      if Player.Character and Player.Character:FindFirstChild("Humanoid") then
-         Player.Character.Humanoid.WalkSpeed = Value
-      end
    end,
 })
 
@@ -126,7 +131,7 @@ PlayerTab:CreateToggle({
    Callback = function(Value) InfiniteJumpEnabled = Value end,
 })
 
---// LOOPS
+--// LOOPS DE EXECUÇÃO
 RunService.RenderStepped:Connect(function()
     if MiraAtiva then
         local target = getTarget()
@@ -138,17 +143,21 @@ RunService.RenderStepped:Connect(function()
     
     if EspAtivo then
         for _, p in pairs(Players:GetPlayers()) do
-            if p ~= Player and p.Character and p.Character:FindFirstChild("Head") then
+            if p ~= Player and p.Character and p.Character:FindFirstChild("Humanoid") then
                 local h = p.Character:FindFirstChild("REI_ESP") or Instance.new("Highlight")
                 h.Name = "REI_ESP"
                 h.Parent = p.Character
                 
-                local _, visible = Camera:WorldToViewportPoint(p.Character.Head.Position)
+                local _, visible = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
                 h.FillColor = visible and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
                 h.FillTransparency = 0.5
                 h.OutlineTransparency = 0
             end
         end
+    end
+
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.WalkSpeed = WalkSpeedValue
     end
 end)
 
@@ -158,8 +167,9 @@ UIS.JumpRequest:Connect(function()
     end
 end)
 
+-- NOTIFICAÇÃO FINAL ALTERADA
 Rayfield:Notify({
    Title = "👑 REI REIS",
-   Content = "wi-fi",
+   Content = "SISTEMA CARREGADO",
    Duration = 5
 })
