@@ -1,7 +1,7 @@
 --// =====================================================
---// 🧘 REI REIS | SUPREMO - CHILL EDITION
---// STATUS: FASE BETA ⚠️
---// DISPOSITIVO: OTIMIZADO MOBILE (Moto G20)
+--// 👑 REI REIS | SUPREMO - TOTAL CONTROL EDITION
+--// STATUS: FASE BETA ⚠️ (Versão Corrigida)
+--// DISPOSITIVO: OTIMIZADO MOBILE
 --// =====================================================
 
 local Color3_fromRGB = Color3.fromRGB
@@ -26,22 +26,33 @@ local InfiniteJumpEnabled = false
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "REI REIS | SUPREMO", 
-   Icon = "rbxassetid://13511783015", -- ID da Imagem do Avatar Roblox Sentado
-   LoadingTitle = "Sentando no Trono Rei Reis...",
-   LoadingSubtitle = "STATUS: ONLINE",
+   Name = "👑 REI REIS | SUPREMO",
+   LoadingTitle = "Iniciando Sistema Rei Reis...",
+   LoadingSubtitle = "STATUS: ONLINE 👑",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false,
    Theme = "DarkBlue"
 })
 
---// AVISO DE FASE BETA
-Rayfield:Notify({
-   Title = "⚠️ AVISO: FASE BETA",
-   Content = "Este script está em fase Beta. Podem ocorrer bugs ou funções falharem. Estamos em testes!",
-   Duration = 8,
-   Image = 4483345998,
-})
+--// EFEITO DE MENSAGEM PISCANTE (FASE BETA)
+task.spawn(function()
+    for i = 1, 4 do -- Faz o alerta piscar 4 vezes
+        Rayfield:Notify({
+           Title = "🚨 ALERTA: FASE BETA 🚨",
+           Content = "O SCRIPT PODE APRESENTAR BUGS OU FALHAS!",
+           Duration = 1,
+           Image = 4483345998,
+        })
+        task.wait(1)
+    end
+    -- Mensagem final que fica na tela
+    Rayfield:Notify({
+       Title = "⚠️ AVISO IMPORTANTE",
+       Content = "Fase Beta: Coisas podem dar errado. Use com sabedoria, meu rei!",
+       Duration = 7,
+       Image = 4483345998,
+    })
+end)
 
 --// LÓGICA DE ALVO
 local function getTarget()
@@ -132,10 +143,12 @@ PlayerTab:CreateToggle({
    Callback = function(Value) InfiniteJumpEnabled = Value end,
 })
 
---// CORREÇÃO PULO INFINITO
+--// LÓGICA DE PULO INFINITO
 UIS.JumpRequest:Connect(function()
-    if InfiniteJumpEnabled and Player.Character and Player.Character:FindFirstChildOfClass("Humanoid") then
-        Player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    if InfiniteJumpEnabled then
+        if Player.Character and Player.Character:FindFirstChildOfClass("Humanoid") then
+            Player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
     end
 end)
 
@@ -169,9 +182,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- NOTIFICAÇÃO FINAL
+-- Notificação Final
 Rayfield:Notify({
-   Title = "🧘 REI REIS",
+   Title = "👑 REI REIS",
    Content = "SISTEMA CARREGADO",
    Duration = 5
 })
