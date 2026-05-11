@@ -207,4 +207,4 @@ UIS.JumpRequest:Connect(function()
     end
 end)
 
-Rayfield:Notify({Title = "👑 REI REIS", Content = "CONTROLE TOTAL ATIVADO: WI-FI", Duration = 5})
+Rayfield:Notify({Title = "👑 REI REIS", Content = "BOA SORTE, MEU REI! 👑", Duration = 5})
