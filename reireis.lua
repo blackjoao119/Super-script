@@ -1,7 +1,7 @@
 --// =====================================================
 --// 👑 REI REIS | SUPREMO - THE FINAL VERSION
 --// STATUS: MIRA 0.35 + PONTOS FULL + DISTÂNCIA INIMIGO ✅
---// DISPOSITIVO: OTIMIZADO MOBILE (WI-FI)
+--// DISPOSITIVO: OTIMIZADO MOBILE 
 --// =====================================================
 
 local Players = game:GetService("Players")
