@@ -1,91 +1,50 @@
 --// =====================================================
---// 👑 REI REIS | SUPREMO - THE FINAL VERSION
---// STATUS: MIRA 0.35 + PONTOS FULL + DISTÂNCIA INIMIGO ✅
---// DISPOSITIVO: OTIMIZADO MOBILE 
+--// 👑 PROJECT: SYSTEM: AWAKENING | FPS EDITION v1.9.1
+--// STATUS: INTERFACE CORRIGIDA + ANTI-SNAP ✅
+--// OTIMIZAÇÃO: PERFORMANCE TOTAL (DELTA EXECUTOR)
 --// =====================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
-local Lighting = game:GetService("Lighting")
-
-local Player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local Player = Players.LocalPlayer
 
---// VARIÁVEIS DE CONTROLE
-local MiraAtiva = false
-local FovVisivel = false
-local WallshotAtivo = false
-local EspRaioXAtivo = false
-local ESPDistanceEnabled = false
-local FovRadius = 25
-local DistanceCache = {}
+--// [CONFIGURAÇÃO GLOBAL]
+getgenv().SystemConfig = {
+    MiraAtiva = false,
+    FovRadius = 500,
+    Smoothness = 0.35,
+    ShowFov = false,
+    TeamCheck = true,
+    HighlightEnabled = false,
+    DotEnabled = false
+}
 
---// VARIÁVEIS PLAYER
-local WalkSpeedValue = 100
-local SpeedEnabled = false 
-local InfiniteJumpEnabled = false
+--// [FOV CIRCLE]
+local FovCircle = Drawing.new("Circle")
+FovCircle.Visible = false
+FovCircle.Thickness = 1.5
+FovCircle.Color = Color3.fromRGB(0, 200, 255)
+FovCircle.Transparency = 0.5
 
---// LOAD RAYFIELD
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "👑 REI REIS | SUPREMO",
-   LoadingTitle = "CONSOLIDANDO CÓDIGO FINAL...", 
-   LoadingSubtitle = "MODO OFF: WI-FI",
-   ConfigurationSaving = { Enabled = false },
-   KeySystem = false,
-   Theme = "DarkBlue"
-})
-
---// =====================================================
---// GUI DO FOV (CÍRCULO)
---// =====================================================
-local Gui = Instance.new("ScreenGui")
-Gui.Name = "REI_FOV_SYSTEM"
-Gui.IgnoreGuiInset = true 
-pcall(function() Gui.Parent = game.CoreGui end)
-
-local Circle = Instance.new("Frame", Gui)
-Circle.Visible = false
-Circle.BackgroundTransparency = 1
-Circle.AnchorPoint = Vector2.new(0.5,0.5)
-Circle.Position = UDim2.new(0.5,0,0.5,0)
-Circle.Size = UDim2.new(0, FovRadius*2, 0, FovRadius*2)
-
-local Stroke = Instance.new("UIStroke", Circle)
-Stroke.Thickness = 2
-Stroke.Color = Color3.fromRGB(0,170,255)
-
-local Corner = Instance.new("UICorner", Circle)
-Corner.CornerRadius = UDim.new(1,0)
-
---// =====================================================
---// FUNÇÕES TÉCNICAS (RAYCAST & TARGET)
---// =====================================================
-local function IsBehindWall(targetPart)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {Player.Character, targetPart.Parent}
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    local result = workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position), rayParams)
-    return result ~= nil
-end
-
+--// [FUNÇÃO: BUSCAR ALVO ESTÁVEL]
 local function getTarget()
+    local closest, shortest = nil, getgenv().SystemConfig.FovRadius
     local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    local closest, shortest = nil, FovRadius
 
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= Player and p.Character and p.Character:FindFirstChild("Head") then
-            local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
-            if not isTeam then
-                local head = p.Character.Head
-                local hum = p.Character:FindFirstChild("Humanoid")
-                if hum and hum.Health > 0 then
+        if p ~= Player and p.Character then
+            local head = p.Character:FindFirstChild("Head")
+            local hum = p.Character:FindFirstChildOfClass("Humanoid")
+            
+            if head and hum and hum.Health > 0 then
+                local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
+                if not (isTeam and getgenv().SystemConfig.TeamCheck) then
                     local pos, vis = Camera:WorldToViewportPoint(head.Position)
-                    local behind = IsBehindWall(head)
-                    if vis and (not behind or WallshotAtivo) then
-                        local dist = (Vector2.new(pos.X,pos.Y) - center).Magnitude
+                    
+                    -- ANTI-SNAP: Só aceita se o alvo estiver na frente da câmera (pos.Z > 0)
+                    if vis and pos.Z > 0 then
+                        local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
                         if dist < shortest then
                             shortest = dist
                             closest = head
@@ -98,132 +57,122 @@ local function getTarget()
     return closest
 end
 
---// =====================================================
---// INTERFACE (ABAS)
---// =====================================================
+--// [LOAD RAYFIELD UI]
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "👑 SYSTEM: AWAKENING | v1.9.1",
+   LoadingTitle = "INICIALIZANDO...",
+   LoadingSubtitle = "Estabilidade Total, Meu Rei",
+   ConfigurationSaving = { Enabled = false },
+   Theme = "DarkBlue" 
+})
+
+--// [TABS]
 local CombatTab = Window:CreateTab("🔫 Combate", 10734950020)
-local VisualTab = Window:CreateTab("👁 Visual", 10734951477)
-local PlayerTab = Window:CreateTab("🏃 Player", 10734981350)
+local VisualTab = Window:CreateTab("👁️ Visual", 10734951477)
 
--- COMBATE
-CombatTab:CreateToggle({Name = "Ativar Mira Suave (0.35)", CurrentValue = false, Callback = function(v) MiraAtiva = v end})
-CombatTab:CreateToggle({Name = "Exibir Círculo do FOV", CurrentValue = false, Callback = function(v) FovVisivel = v Circle.Visible = v end})
-CombatTab:CreateToggle({Name = "Wallshot", CurrentValue = false, Callback = function(v) WallshotAtivo = v end})
-CombatTab:CreateSlider({Name = "Ajustar FOV", Range = {5, 25}, Increment = 1, CurrentValue = 5, Callback = function(v)
-    FovRadius = v * 5
-    Circle.Size = UDim2.new(0, FovRadius*2, 0, FovRadius*2)
-end})
+CombatTab:CreateToggle({
+    Name = "Ativar Mira (Estabilizada)", 
+    CurrentValue = false, 
+    Callback = function(v) getgenv().SystemConfig.MiraAtiva = v end
+})
 
--- VISUAL
-VisualTab:CreateToggle({Name = "Ativar Pontos (Dist. Inimigo)", CurrentValue = false, Callback = function(v)
-    ESPDistanceEnabled = v
-    if not v then for _, d in pairs(DistanceCache) do if d.bill then d.bill:Destroy() end end table.clear(DistanceCache) end
-end})
-VisualTab:CreateToggle({Name = "Raio-X (Highlight)", CurrentValue = false, Callback = function(v) EspRaioXAtivo = v end})
-VisualTab:CreateButton({Name = "Iluminar Mapa (Full Bright) ☀️", Callback = function() 
-    Lighting.Brightness = 2 
-    Lighting.ClockTime = 14 
-    Lighting.Ambient = Color3.new(1,1,1)
-    Lighting.GlobalShadows = false
-end})
+CombatTab:CreateSlider({
+    Name = "Puxada (Suavidade)", 
+    Range = {0.1, 1}, 
+    Increment = 0.05, 
+    CurrentValue = 0.35, 
+    Callback = function(v) getgenv().SystemConfig.Smoothness = v end
+})
 
--- PLAYER
-PlayerTab:CreateToggle({Name = "Velocidade Rei", CurrentValue = false, Callback = function(v) SpeedEnabled = v end})
-PlayerTab:CreateSlider({Name = "Velocidade", Range = {16, 250}, Increment = 1, CurrentValue = 100, Callback = function(v) WalkSpeedValue = v end})
-PlayerTab:CreateToggle({Name = "Pulo Infinito", CurrentValue = false, Callback = function(v) InfiniteJumpEnabled = v end})
+CombatTab:CreateSlider({
+    Name = "Raio da Mira", 
+    Range = {50, 800}, 
+    Increment = 10, 
+    CurrentValue = 500, 
+    Callback = function(v) getgenv().SystemConfig.FovRadius = v end
+})
 
---// =====================================================
---// SISTEMA ESP DINÂMICO
---// =====================================================
-local function createESP(plr)
-    if DistanceCache[plr] then return end
-    local head = plr.Character and plr.Character:FindFirstChild("Head")
-    if not head then return end
-    
-    local bill = Instance.new("BillboardGui", head)
-    bill.Name = "REI_ESP_SYSTEM"
-    bill.Size, bill.AlwaysOnTop, bill.ExtentsOffset = UDim2.new(0,50,0,50), true, Vector3.new(0, 2, 0)
+VisualTab:CreateSection("Efeitos Visuais")
+VisualTab:CreateToggle({
+    Name = "Ativar Brilho (Raio-X)", 
+    CurrentValue = false, 
+    Callback = function(v) getgenv().SystemConfig.HighlightEnabled = v end
+})
+VisualTab:CreateToggle({
+    Name = "Ativar Ponto na Cabeça", 
+    CurrentValue = false, 
+    Callback = function(v) getgenv().SystemConfig.DotEnabled = v end
+})
 
-    local dot = Instance.new("Frame", bill)
-    dot.Size = UDim2.new(0, 8, 0, 8)
-    dot.Position = UDim2.new(0.5, -4, 0.5, -4)
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-
-    local text = Instance.new("TextLabel", bill)
-    text.Size, text.BackgroundTransparency, text.TextScaled, text.Font = UDim2.new(1, 0, 0.4, 0), 1, true, Enum.Font.GothamBold
-    text.Position = UDim2.new(0, 0, 0.7, 0)
-    text.Visible = false
-
-    DistanceCache[plr] = {bill = bill, dot = dot, text = text, head = head}
+--// [FUNÇÃO: WALL CHECK]
+local function IsBehindWall(targetPart)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {Player.Character, targetPart.Parent}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local result = workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position), rayParams)
+    return result ~= nil
 end
 
---// =====================================================
---// LOOPS DE RENDERIZAÇÃO
---// =====================================================
-RunService.RenderStepped:Connect(function()
-    -- Mira
-    if MiraAtiva then
+--// [LOOP PRINCIPAL]
+RunService.RenderStepped:Connect(function(dt)
+    -- Atualiza FOV
+    FovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    FovCircle.Radius = getgenv().SystemConfig.FovRadius
+    FovCircle.Visible = getgenv().SystemConfig.ShowFov
+
+    -- Lógica de Mira
+    if getgenv().SystemConfig.MiraAtiva then
         local target = getTarget()
         if target then
-            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Position), 0.35)
+            local goal = CFrame.new(Camera.CFrame.Position, target.Position)
+            -- math.clamp impede que a mira pule violentamente em lags
+            Camera.CFrame = Camera.CFrame:Lerp(goal, getgenv().SystemConfig.Smoothness * math.clamp(60 * dt, 0, 1))
         end
     end
-    
-    -- ESP Inteligente
-    if ESPDistanceEnabled then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= Player and p.Character and p.Character:FindFirstChild("Head") then
-                createESP(p)
-                local data = DistanceCache[p]
-                if data then
-                    local head = p.Character.Head
-                    local dist = (Player.Character.Head.Position - head.Position).Magnitude
-                    local behind = IsBehindWall(head)
+
+    -- Lógica Visual (Highlights e Dots)
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= Player and p.Character then
+            local char = p.Character
+            local hl = char:FindFirstChild("System_HL") or Instance.new("Highlight", char)
+            hl.Name = "System_HL"
+            
+            local head = char:FindFirstChild("Head")
+            if head then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local dotGui = head:FindFirstChild("System_Dot")
+                
+                -- Se não tiver o dot, cria
+                if not dotGui then
+                    local bill = Instance.new("BillboardGui", head)
+                    bill.Name = "System_Dot"
+                    bill.Size, bill.AlwaysOnTop = UDim2.new(0, 8, 0, 8), true
+                    bill.ExtentsOffset = Vector3.new(0, 1.5, 0)
+                    local frame = Instance.new("Frame", bill)
+                    frame.Size = UDim2.new(1, 0, 1, 0)
+                    Instance.new("UICorner", frame).CornerRadius = UDim.new(1, 0)
+                    dotGui = bill
+                end
+
+                if hum and hum.Health > 0 then
                     local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
+                    local behind = IsBehindWall(head)
+                    local color = isTeam and Color3.new(0,1,0) or (behind and Color3.new(1,0.6,0) or Color3.new(1,0,0))
                     
-                    if isTeam then
-                        data.dot.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Verde (Aliado)
-                        data.text.Visible = false -- Sem distância para time
-                    else
-                        local color = behind and Color3.fromRGB(130, 0, 0) or Color3.fromRGB(255, 0, 0)
-                        data.dot.BackgroundColor3 = color
-                        data.text.TextColor3 = color
-                        data.text.Text = math.floor(dist).."m"
-                        data.text.Visible = true -- Distância só para inimigo
-                    end
+                    hl.Enabled = getgenv().SystemConfig.HighlightEnabled
+                    hl.FillColor = color
+                    
+                    dotGui.Enabled = getgenv().SystemConfig.DotEnabled
+                    dotGui.Frame.BackgroundColor3 = color
+                else
+                    hl.Enabled = false
+                    dotGui.Enabled = false
                 end
             end
         end
     end
-
-    -- Raio-X
-    if EspRaioXAtivo then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= Player and p.Character then
-                local h = p.Character:FindFirstChild("REI_HL") or Instance.new("Highlight", p.Character)
-                h.Name = "REI_HL"
-                local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
-                local head = p.Character:FindFirstChild("Head")
-                local behind = head and IsBehindWall(head) or false
-                
-                h.FillColor = isTeam and Color3.new(0,1,0) or (behind and Color3.fromRGB(130, 0, 0) or Color3.fromRGB(255, 0, 0))
-            end
-        end
-    end
 end)
 
--- Movimentação
-RunService.Stepped:Connect(function()
-    if SpeedEnabled and Player.Character and Player.Character:FindFirstChild("Humanoid") then
-        Player.Character.Humanoid.WalkSpeed = WalkSpeedValue
-    end
-end)
-
--- Salto
-UIS.JumpRequest:Connect(function()
-    if InfiniteJumpEnabled and Player.Character and Player.Character:FindFirstChildOfClass("Humanoid") then
-        Player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
-    end
-end)
-
-Rayfield:Notify({Title = "👑 REI REIS", Content = "SCRIP TOTALMENTE UNIFICADO! ✅", Duration = 5})
+Rayfield:Notify({Title = "SISTEMA PRONTO", Content = "Menu carregado, Meu Rei!", Duration = 5})
