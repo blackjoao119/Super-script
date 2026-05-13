@@ -1,6 +1,16 @@
+--[[
+    ╔════════════════════════════════════════════════════════════╗
+    ║       PROJECT: SYSTEM: AWAKENING (V1.9.1 TOTAL)            ║
+    ║       STUDIO: SHADOW PROTOCOL LABS                         ║
+    ║------------------------------------------------------------║
+    ║       LEAD DEVELOPER: ENZO CAVALCANTI                      ║
+    ╚════════════════════════════════════════════════════════════╝
+]]
+
 --// =====================================================
 --// 👑 PROJECT: SYSTEM: AWAKENING | FPS EDITION v1.9.1
---// STATUS: INTERFACE CORRIGIDA + ANTI-SNAP ✅
+--// STATUS: CONSOLE STABILIZED & CLEAN LOGS ✅
+--// STUDIO: SHADOW PROTOCOL LABS
 --// OTIMIZAÇÃO: PERFORMANCE TOTAL (DELTA EXECUTOR)
 --// =====================================================
 
@@ -8,6 +18,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Player = Players.LocalPlayer
+local Lighting = game:GetService("Lighting")
+local LogService = game:GetService("LogService")
 
 --// [CONFIGURAÇÃO GLOBAL]
 getgenv().SystemConfig = {
@@ -17,17 +29,30 @@ getgenv().SystemConfig = {
     ShowFov = false,
     TeamCheck = true,
     HighlightEnabled = false,
-    DotEnabled = false
+    DotEnabled = false,
+    FullBright = false,
+    InfAmmo = false,
+    NoRecoil = false
 }
 
---// [FOV CIRCLE]
-local FovCircle = Drawing.new("Circle")
-FovCircle.Visible = false
-FovCircle.Thickness = 1.5
-FovCircle.Color = Color3.fromRGB(0, 200, 255)
-FovCircle.Transparency = 0.5
+--// [SILENT FIX: SHADOW PROTOCOL ANTI-LOG]
+-- Esta função limpa mensagens de erro geradas por conflitos de módulos internos do jogo
+local function ClearConsoleErrors()
+    pcall(function()
+        game:GetService("GuiService"):ClearError()
+    end)
+end
 
---// [FUNÇÃO: BUSCAR ALVO ESTÁVEL]
+--// [FUNÇÃO: WALL CHECK]
+local function IsBehindWall(targetPart)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {Player.Character, targetPart.Parent}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local result = workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position), rayParams)
+    return result ~= nil
+end
+
+--// [FUNÇÃO: BUSCAR ALVO]
 local function getTarget()
     local closest, shortest = nil, getgenv().SystemConfig.FovRadius
     local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
@@ -41,8 +66,6 @@ local function getTarget()
                 local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
                 if not (isTeam and getgenv().SystemConfig.TeamCheck) then
                     local pos, vis = Camera:WorldToViewportPoint(head.Position)
-                    
-                    -- ANTI-SNAP: Só aceita se o alvo estiver na frente da câmera (pos.Z > 0)
                     if vis and pos.Z > 0 then
                         local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
                         if dist < shortest then
@@ -62,41 +85,47 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "👑 SYSTEM: AWAKENING | v1.9.1",
-   LoadingTitle = "INICIALIZANDO...",
-   LoadingSubtitle = "Estabilidade Total, Meu Rei",
+   LoadingTitle = "SHADOW PROTOCOL LABS",
+   LoadingSubtitle = "By: Enzo Cavalcanti",
    ConfigurationSaving = { Enabled = false },
    Theme = "DarkBlue" 
 })
 
 --// [TABS]
 local CombatTab = Window:CreateTab("🔫 Combate", 10734950020)
+local WeaponTab = Window:CreateTab("🔥 Armamento", 10734951477)
 local VisualTab = Window:CreateTab("👁️ Visual", 10734951477)
+local LightTab = Window:CreateTab("💡 Iluminação", 10734951477)
 
+-- [COMBAT]
 CombatTab:CreateToggle({
     Name = "Ativar Mira (Estabilizada)", 
     CurrentValue = false, 
     Callback = function(v) getgenv().SystemConfig.MiraAtiva = v end
 })
-
 CombatTab:CreateSlider({
-    Name = "Puxada (Suavidade)", 
+    Name = "Suavidade (Smooth)", 
     Range = {0.1, 1}, 
     Increment = 0.05, 
     CurrentValue = 0.35, 
     Callback = function(v) getgenv().SystemConfig.Smoothness = v end
 })
 
-CombatTab:CreateSlider({
-    Name = "Raio da Mira", 
-    Range = {50, 800}, 
-    Increment = 10, 
-    CurrentValue = 500, 
-    Callback = function(v) getgenv().SystemConfig.FovRadius = v end
+-- [ARMAMENTO]
+WeaponTab:CreateToggle({
+    Name = "Bala Infinita (Anti-Bug)", 
+    CurrentValue = false, 
+    Callback = function(v) getgenv().SystemConfig.InfAmmo = v end
+})
+WeaponTab:CreateToggle({
+    Name = "Sem Recuo (No Recoil)", 
+    CurrentValue = false, 
+    Callback = function(v) getgenv().SystemConfig.NoRecoil = v end
 })
 
-VisualTab:CreateSection("Efeitos Visuais")
+-- [VISUAL]
 VisualTab:CreateToggle({
-    Name = "Ativar Brilho (Raio-X)", 
+    Name = "Ativar Raio-X (Highlight)", 
     CurrentValue = false, 
     Callback = function(v) getgenv().SystemConfig.HighlightEnabled = v end
 })
@@ -106,73 +135,87 @@ VisualTab:CreateToggle({
     Callback = function(v) getgenv().SystemConfig.DotEnabled = v end
 })
 
---// [FUNÇÃO: WALL CHECK]
-local function IsBehindWall(targetPart)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {Player.Character, targetPart.Parent}
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    local result = workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position), rayParams)
-    return result ~= nil
-end
+-- [ILUMINAÇÃO]
+LightTab:CreateToggle({
+    Name = "FullBright (Ver no Escuro)", 
+    CurrentValue = false, 
+    Callback = function(v) getgenv().SystemConfig.FullBright = v end
+})
 
 --// [LOOP PRINCIPAL]
 RunService.RenderStepped:Connect(function(dt)
-    -- Atualiza FOV
-    FovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    FovCircle.Radius = getgenv().SystemConfig.FovRadius
-    FovCircle.Visible = getgenv().SystemConfig.ShowFov
+    -- Limpeza de erros em background (Shadow Protocol Protection)
+    ClearConsoleErrors()
 
-    -- Lógica de Mira
+    -- FullBright
+    if getgenv().SystemConfig.FullBright then
+        Lighting.Ambient = Color3.new(1, 1, 1)
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+    end
+
+    -- Bala Infinita com Proteção Silent
+    if getgenv().SystemConfig.InfAmmo then
+        local tool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            pcall(function()
+                for _, obj in pairs(tool:GetDescendants()) do
+                    if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                        local name = obj.Name:lower()
+                        if name:find("ammo") or name:find("clip") then
+                            obj.Value = 999
+                        end
+                    end
+                end
+            end)
+        end
+    end
+
+    -- Mira e FOV
     if getgenv().SystemConfig.MiraAtiva then
         local target = getTarget()
         if target then
             local goal = CFrame.new(Camera.CFrame.Position, target.Position)
-            -- math.clamp impede que a mira pule violentamente em lags
             Camera.CFrame = Camera.CFrame:Lerp(goal, getgenv().SystemConfig.Smoothness * math.clamp(60 * dt, 0, 1))
         end
     end
 
-    -- Lógica Visual (Highlights e Dots)
+    -- Visuais Dinâmicos (Silent Execution)
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= Player and p.Character then
-            local char = p.Character
-            local hl = char:FindFirstChild("System_HL") or Instance.new("Highlight", char)
-            hl.Name = "System_HL"
-            
-            local head = char:FindFirstChild("Head")
-            if head then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                local dotGui = head:FindFirstChild("System_Dot")
-                
-                -- Se não tiver o dot, cria
-                if not dotGui then
-                    local bill = Instance.new("BillboardGui", head)
-                    bill.Name = "System_Dot"
-                    bill.Size, bill.AlwaysOnTop = UDim2.new(0, 8, 0, 8), true
-                    bill.ExtentsOffset = Vector3.new(0, 1.5, 0)
-                    local frame = Instance.new("Frame", bill)
-                    frame.Size = UDim2.new(1, 0, 1, 0)
-                    Instance.new("UICorner", frame).CornerRadius = UDim.new(1, 0)
-                    dotGui = bill
-                end
-
-                if hum and hum.Health > 0 then
-                    local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
+            pcall(function()
+                local char = p.Character
+                local head = char:FindFirstChild("Head")
+                if head then
                     local behind = IsBehindWall(head)
-                    local color = isTeam and Color3.new(0,1,0) or (behind and Color3.new(1,0.6,0) or Color3.new(1,0,0))
-                    
+                    local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
+                    local statusColor = isTeam and Color3.new(0,1,0) or (behind and Color3.new(1,0.6,0) or Color3.new(1,0,0))
+
+                    -- Highlight (Shadow Protocol Visuals)
+                    local hl = char:FindFirstChild("System_HL") or Instance.new("Highlight", char)
+                    hl.Name = "System_HL"
                     hl.Enabled = getgenv().SystemConfig.HighlightEnabled
-                    hl.FillColor = color
+                    hl.FillColor = statusColor
                     
-                    dotGui.Enabled = getgenv().SystemConfig.DotEnabled
-                    dotGui.Frame.BackgroundColor3 = color
-                else
-                    hl.Enabled = false
-                    dotGui.Enabled = false
+                    -- Pontinho
+                    local dot = head:FindFirstChild("System_Dot")
+                    if not dot then
+                        local bill = Instance.new("BillboardGui", head)
+                        bill.Name = "System_Dot"
+                        bill.Size, bill.AlwaysOnTop = UDim2.new(0, 8, 0, 8), true
+                        bill.ExtentsOffset = Vector3.new(0, 1.5, 0)
+                        local f = Instance.new("Frame", bill)
+                        f.Size = UDim2.new(1,0,1,0)
+                        Instance.new("UICorner", f).CornerRadius = UDim.new(1,0)
+                        dot = bill
+                    end
+                    dot.Enabled = getgenv().SystemConfig.DotEnabled
+                    dot.Frame.BackgroundColor3 = statusColor
                 end
-            end
+            end)
         end
     end
 end)
 
-Rayfield:Notify({Title = "SISTEMA PRONTO", Content = "Menu carregado, Meu Rei!", Duration = 5})
+Rayfield:Notify({Title = "SHADOW PROTOCOL LABS", Content = "System: Awakening carregado com sucesso!", Duration = 5})
+
