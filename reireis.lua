@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Player = Players.LocalPlayer
 local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui") -- Necessário para as Tags
 
 --// [CONFIGURAÇÃO GLOBAL]
 getgenv().SystemConfig = {
@@ -22,6 +23,10 @@ getgenv().SystemConfig = {
     HighlightEnabled = false,
     DotEnabled = false,
     FullBright = false,
+    NoShadows = false,    -- Novo
+    ClarezaMod = false,   -- Novo
+    ShowFPS = false,      -- Novo
+    ShowPlayers = false,  -- Novo
     InfAmmo = false,
     NoRecoil = false
 }
@@ -31,8 +36,38 @@ local OriginalSettings = {
     Brightness = Lighting.Brightness,
     ClockTime = Lighting.ClockTime,
     FogEnd = Lighting.FogEnd,
-    OutdoorAmbient = Lighting.OutdoorAmbient
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    GlobalShadows = Lighting.GlobalShadows,
+    Exposure = Lighting.ExposureCompensation
 }
+
+--// [SISTEMA DE MICRO-TAGS - NOVO]
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+local TagContainer = Instance.new("Frame", ScreenGui)
+TagContainer.Size = UDim2.new(0, 60, 0, 50) 
+TagContainer.Position = UDim2.new(0, 5, 0, 45) 
+TagContainer.BackgroundTransparency = 1
+local UIList = Instance.new("UIListLayout", TagContainer)
+UIList.Padding = UDim.new(0, 3)
+
+local function CreateTag(color)
+    local f = Instance.new("Frame", TagContainer)
+    f.Size = UDim2.new(0, 70, 0, 16) 
+    f.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    f.BackgroundTransparency = 0.5
+    f.Visible = false
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
+    local l = Instance.new("TextLabel", f)
+    l.Size = UDim2.new(1, 0, 1, 0)
+    l.BackgroundTransparency = 1
+    l.TextColor3 = color
+    l.TextSize = 10
+    l.Font = Enum.Font.GothamBold
+    return f, l
+end
+
+local fpsF, fpsL = CreateTag(Color3.fromRGB(0, 255, 120))
+local countF, countL = CreateTag(Color3.fromRGB(255, 255, 0))
 
 --// [FUNÇÃO: BUSCA DE ALVO (Aimbot)]
 local function getTarget()
@@ -86,6 +121,7 @@ local CombatTab = Window:CreateTab("🔫 Combate", 10734950020)
 local WeaponTab = Window:CreateTab("🔥 Armamento", 10734951477)
 local VisualTab = Window:CreateTab("👁️ Visual", 10734951477)
 local LightTab = Window:CreateTab("💡 Iluminação", 10734951477)
+local StatusTab = Window:CreateTab("📊 Monitor", 4483362458) -- Novo
 
 CombatTab:CreateToggle({ Name = "Ativar Mira", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.MiraAtiva = v end })
 CombatTab:CreateSlider({ Name = "Suavidade", Range = {0.1, 1}, Increment = 0.05, CurrentValue = 0.35, Callback = function(v) getgenv().SystemConfig.Smoothness = v end })
@@ -110,10 +146,19 @@ LightTab:CreateToggle({
         end
     end 
 })
+LightTab:CreateToggle({ Name = "Clareza Técnica", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.ClarezaMod = v end })
+LightTab:CreateToggle({ Name = "Remover Sombras", CurrentValue = false, Callback = function(v) Lighting.GlobalShadows = not v end })
+
+StatusTab:CreateToggle({ Name = "Mostrar FPS", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.ShowFPS = v fpsF.Visible = v end })
+StatusTab:CreateToggle({ Name = "Contador Players", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.ShowPlayers = v countF.Visible = v end })
 
 --// [LOOP CORE]
 RunService.RenderStepped:Connect(function(dt)
-    -- Lógica da Mira (RESTURADA)
+    -- Monitoramento (FPS/Players)
+    if getgenv().SystemConfig.ShowFPS then fpsL.Text = "FPS: " .. math.floor(1/dt) end
+    if getgenv().SystemConfig.ShowPlayers then countL.Text = "P: " .. #Players:GetPlayers() end
+
+    -- Lógica da Mira (ORIGINAL)
     if getgenv().SystemConfig.MiraAtiva then
         local target = getTarget()
         if target then
@@ -122,7 +167,23 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Balas Infinitas
+    -- Novas Funções de Iluminação
+    if getgenv().SystemConfig.FullBright then
+        Lighting.Ambient = Color3.fromRGB(178, 178, 178)
+        Lighting.OutdoorAmbient = Color3.fromRGB(178, 178, 178)
+        Lighting.ClockTime = 14
+    end
+    if getgenv().SystemConfig.ClarezaMod then
+        Lighting.Brightness = 3
+        Lighting.ExposureCompensation = 0.5
+    else
+        if not getgenv().SystemConfig.FullBright then
+            Lighting.Brightness = OriginalSettings.Brightness
+            Lighting.ExposureCompensation = OriginalSettings.Exposure
+        end
+    end
+
+    -- Balas Infinitas (ORIGINAL)
     if getgenv().SystemConfig.InfAmmo or getgenv().SystemConfig.NoRecoil then
         local tool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
         if tool then
@@ -138,7 +199,7 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Visuais Calibrados (Baseado na 2567.jpg)
+    -- Visuais (RAIO-X E PONTO ORIGINAIS)
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= Player and p.Character then
             local char = p.Character
@@ -148,17 +209,17 @@ RunService.RenderStepped:Connect(function(dt)
                 local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
                 local statusColor = isTeam and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
                 
-                -- Highlight Otimizado: Outline Colorido e Fill Suave
+                -- Highlight
                 local hl = char:FindFirstChild("System_HL") or Instance.new("Highlight", char)
                 hl.Name = "System_HL"
                 hl.Enabled = getgenv().SystemConfig.HighlightEnabled
                 hl.FillColor = statusColor
                 hl.OutlineColor = statusColor
-                hl.FillTransparency = 0.5 -- Aumentado para não ficar muito forte como na foto
+                hl.FillTransparency = 0.5
                 hl.OutlineTransparency = 0
                 hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                 
-                -- Ponto Inteligente
+                -- Ponto
                 local behind = IsBehindWall(head)
                 local dotColor = isTeam and Color3.fromRGB(0, 255, 0) or (behind and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(255, 0, 0))
 
@@ -181,4 +242,4 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
-Rayfield:Notify({Title = "SHADOW PROTOCOL LABS", Content = "Mira e Visão 100% Calibradas, meu rei!", Duration = 5})
+Rayfield:Notify({Title = "SHADOW PROTOCOL LABS", Content = "Mira, Visão e Monitor 100% integrados, meu rei!", Duration = 5})
