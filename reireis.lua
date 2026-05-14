@@ -1,32 +1,23 @@
 --[[
     ╔════════════════════════════════════════════════════════════╗
-    ║       PROJECT: SYSTEM: AWAKENING (V1.9.1 TOTAL)            ║
+    ║       PROJECT: SYSTEM: AWAKENING (V1.9.2 TOTAL)            ║
     ║       STUDIO: SHADOW PROTOCOL LABS                         ║
     ║------------------------------------------------------------║
     ║       LEAD DEVELOPER: ENZO CAVALCANTI                      ║
     ╚════════════════════════════════════════════════════════════╝
 ]]
 
---// =====================================================
---// 👑 PROJECT: SYSTEM: AWAKENING | FPS EDITION v1.9.1
---// STATUS: CONSOLE STABILIZED & CLEAN LOGS ✅
---// STUDIO: SHADOW PROTOCOL LABS
---// OTIMIZAÇÃO: PERFORMANCE TOTAL (DELTA EXECUTOR)
---// =====================================================
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Player = Players.LocalPlayer
 local Lighting = game:GetService("Lighting")
-local LogService = game:GetService("LogService")
 
 --// [CONFIGURAÇÃO GLOBAL]
 getgenv().SystemConfig = {
     MiraAtiva = false,
     FovRadius = 500,
     Smoothness = 0.35,
-    ShowFov = false,
     TeamCheck = true,
     HighlightEnabled = false,
     DotEnabled = false,
@@ -35,24 +26,15 @@ getgenv().SystemConfig = {
     NoRecoil = false
 }
 
---// [SILENT FIX: SHADOW PROTOCOL ANTI-LOG]
--- Esta função limpa mensagens de erro geradas por conflitos de módulos internos do jogo
-local function ClearConsoleErrors()
-    pcall(function()
-        game:GetService("GuiService"):ClearError()
-    end)
-end
+local OriginalSettings = {
+    Ambient = Lighting.Ambient,
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogEnd = Lighting.FogEnd,
+    OutdoorAmbient = Lighting.OutdoorAmbient
+}
 
---// [FUNÇÃO: WALL CHECK]
-local function IsBehindWall(targetPart)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {Player.Character, targetPart.Parent}
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    local result = workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position), rayParams)
-    return result ~= nil
-end
-
---// [FUNÇÃO: BUSCAR ALVO]
+--// [FUNÇÃO: BUSCA DE ALVO (Aimbot)]
 local function getTarget()
     local closest, shortest = nil, getgenv().SystemConfig.FovRadius
     local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
@@ -80,98 +62,58 @@ local function getTarget()
     return closest
 end
 
---// [LOAD RAYFIELD UI]
+--// [FUNÇÃO: WALL CHECK]
+local function IsBehindWall(targetPart)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {Player.Character, targetPart.Parent}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local result = workspace:Raycast(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position), rayParams)
+    return result ~= nil
+end
+
+--// [INTERFACE RAYFIELD]
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "👑 SYSTEM: AWAKENING | v1.9.1",
+   Name = "👑 SYSTEM: AWAKENING | v1.9.2",
    LoadingTitle = "SHADOW PROTOCOL LABS",
    LoadingSubtitle = "By: Enzo Cavalcanti",
    ConfigurationSaving = { Enabled = false },
    Theme = "DarkBlue" 
 })
 
---// [TABS]
 local CombatTab = Window:CreateTab("🔫 Combate", 10734950020)
 local WeaponTab = Window:CreateTab("🔥 Armamento", 10734951477)
 local VisualTab = Window:CreateTab("👁️ Visual", 10734951477)
 local LightTab = Window:CreateTab("💡 Iluminação", 10734951477)
 
--- [COMBAT]
-CombatTab:CreateToggle({
-    Name = "Ativar Mira (Estabilizada)", 
-    CurrentValue = false, 
-    Callback = function(v) getgenv().SystemConfig.MiraAtiva = v end
-})
-CombatTab:CreateSlider({
-    Name = "Suavidade (Smooth)", 
-    Range = {0.1, 1}, 
-    Increment = 0.05, 
-    CurrentValue = 0.35, 
-    Callback = function(v) getgenv().SystemConfig.Smoothness = v end
-})
+CombatTab:CreateToggle({ Name = "Ativar Mira", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.MiraAtiva = v end })
+CombatTab:CreateSlider({ Name = "Suavidade", Range = {0.1, 1}, Increment = 0.05, CurrentValue = 0.35, Callback = function(v) getgenv().SystemConfig.Smoothness = v end })
 
--- [ARMAMENTO]
-WeaponTab:CreateToggle({
-    Name = "Bala Infinita (Anti-Bug)", 
-    CurrentValue = false, 
-    Callback = function(v) getgenv().SystemConfig.InfAmmo = v end
-})
-WeaponTab:CreateToggle({
-    Name = "Sem Recuo (No Recoil)", 
-    CurrentValue = false, 
-    Callback = function(v) getgenv().SystemConfig.NoRecoil = v end
-})
+WeaponTab:CreateToggle({ Name = "Bala Infinita", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.InfAmmo = v end })
+WeaponTab:CreateToggle({ Name = "Sem Recuo", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.NoRecoil = v end })
 
--- [VISUAL]
-VisualTab:CreateToggle({
-    Name = "Ativar Raio-X (Highlight)", 
+VisualTab:CreateToggle({ Name = "Ativar Raio-X", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.HighlightEnabled = v end })
+VisualTab:CreateToggle({ Name = "Ponto na Cabeça", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.DotEnabled = v end })
+
+LightTab:CreateToggle({ 
+    Name = "FullBright", 
     CurrentValue = false, 
-    Callback = function(v) getgenv().SystemConfig.HighlightEnabled = v end
-})
-VisualTab:CreateToggle({
-    Name = "Ativar Ponto na Cabeça", 
-    CurrentValue = false, 
-    Callback = function(v) getgenv().SystemConfig.DotEnabled = v end
-})
-
--- [ILUMINAÇÃO]
-LightTab:CreateToggle({
-    Name = "FullBright (Ver no Escuro)", 
-    CurrentValue = false, 
-    Callback = function(v) getgenv().SystemConfig.FullBright = v end
-})
-
---// [LOOP PRINCIPAL]
-RunService.RenderStepped:Connect(function(dt)
-    -- Limpeza de erros em background (Shadow Protocol Protection)
-    ClearConsoleErrors()
-
-    -- FullBright
-    if getgenv().SystemConfig.FullBright then
-        Lighting.Ambient = Color3.new(1, 1, 1)
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-    end
-
-    -- Bala Infinita com Proteção Silent
-    if getgenv().SystemConfig.InfAmmo then
-        local tool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
-        if tool then
-            pcall(function()
-                for _, obj in pairs(tool:GetDescendants()) do
-                    if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-                        local name = obj.Name:lower()
-                        if name:find("ammo") or name:find("clip") then
-                            obj.Value = 999
-                        end
-                    end
-                end
-            end)
+    Callback = function(v) 
+        getgenv().SystemConfig.FullBright = v 
+        if not v then
+            Lighting.Ambient = OriginalSettings.Ambient
+            Lighting.Brightness = OriginalSettings.Brightness
+            Lighting.ClockTime = OriginalSettings.ClockTime
+            Lighting.FogEnd = OriginalSettings.FogEnd
+            Lighting.OutdoorAmbient = OriginalSettings.OutdoorAmbient
         end
-    end
+    end 
+})
 
-    -- Mira e FOV
+--// [LOOP CORE]
+RunService.RenderStepped:Connect(function(dt)
+    -- Lógica da Mira (RESTURADA)
     if getgenv().SystemConfig.MiraAtiva then
         local target = getTarget()
         if target then
@@ -180,42 +122,63 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Visuais Dinâmicos (Silent Execution)
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= Player and p.Character then
+    -- Balas Infinitas
+    if getgenv().SystemConfig.InfAmmo or getgenv().SystemConfig.NoRecoil then
+        local tool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
+        if tool then
             pcall(function()
-                local char = p.Character
-                local head = char:FindFirstChild("Head")
-                if head then
-                    local behind = IsBehindWall(head)
-                    local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
-                    local statusColor = isTeam and Color3.new(0,1,0) or (behind and Color3.new(1,0.6,0) or Color3.new(1,0,0))
-
-                    -- Highlight (Shadow Protocol Visuals)
-                    local hl = char:FindFirstChild("System_HL") or Instance.new("Highlight", char)
-                    hl.Name = "System_HL"
-                    hl.Enabled = getgenv().SystemConfig.HighlightEnabled
-                    hl.FillColor = statusColor
-                    
-                    -- Pontinho
-                    local dot = head:FindFirstChild("System_Dot")
-                    if not dot then
-                        local bill = Instance.new("BillboardGui", head)
-                        bill.Name = "System_Dot"
-                        bill.Size, bill.AlwaysOnTop = UDim2.new(0, 8, 0, 8), true
-                        bill.ExtentsOffset = Vector3.new(0, 1.5, 0)
-                        local f = Instance.new("Frame", bill)
-                        f.Size = UDim2.new(1,0,1,0)
-                        Instance.new("UICorner", f).CornerRadius = UDim.new(1,0)
-                        dot = bill
+                for _, obj in ipairs(tool:GetDescendants()) do
+                    if getgenv().SystemConfig.InfAmmo and (obj:IsA("IntValue") or obj:IsA("NumberValue")) then
+                        if obj.Name:lower():find("ammo") or obj.Name:lower():find("clip") then
+                            obj.Value = 999
+                        end
                     end
-                    dot.Enabled = getgenv().SystemConfig.DotEnabled
-                    dot.Frame.BackgroundColor3 = statusColor
                 end
             end)
         end
     end
+
+    -- Visuais Calibrados (Baseado na 2567.jpg)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= Player and p.Character then
+            local char = p.Character
+            local head = char:FindFirstChild("Head")
+            
+            if head then
+                local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
+                local statusColor = isTeam and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+                
+                -- Highlight Otimizado: Outline Colorido e Fill Suave
+                local hl = char:FindFirstChild("System_HL") or Instance.new("Highlight", char)
+                hl.Name = "System_HL"
+                hl.Enabled = getgenv().SystemConfig.HighlightEnabled
+                hl.FillColor = statusColor
+                hl.OutlineColor = statusColor
+                hl.FillTransparency = 0.5 -- Aumentado para não ficar muito forte como na foto
+                hl.OutlineTransparency = 0
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                
+                -- Ponto Inteligente
+                local behind = IsBehindWall(head)
+                local dotColor = isTeam and Color3.fromRGB(0, 255, 0) or (behind and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(255, 0, 0))
+
+                local dot = head:FindFirstChild("System_Dot")
+                if not dot then
+                    local bill = Instance.new("BillboardGui", head)
+                    bill.Name = "System_Dot"
+                    bill.Size = UDim2.new(0, 10, 0, 10)
+                    bill.AlwaysOnTop = true
+                    bill.ExtentsOffset = Vector3.new(0, 1.5, 0)
+                    local f = Instance.new("Frame", bill)
+                    f.Size = UDim2.new(1,0,1,0)
+                    Instance.new("UICorner", f).CornerRadius = UDim.new(1,0)
+                    dot = bill
+                end
+                dot.Enabled = getgenv().SystemConfig.DotEnabled
+                dot.Frame.BackgroundColor3 = dotColor
+            end
+        end
+    end
 end)
 
-Rayfield:Notify({Title = "SHADOW PROTOCOL LABS", Content = "System: Awakening carregado com sucesso!", Duration = 5})
-
+Rayfield:Notify({Title = "SHADOW PROTOCOL LABS", Content = "Mira e Visão 100% Calibradas, meu rei!", Duration = 5})
