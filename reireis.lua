@@ -4,6 +4,7 @@
     ║       STUDIO: SHADOW PROTOCOL LABS                         ║
     ║------------------------------------------------------------║
     ║       LEAD DEVELOPER: ENZO CAVALCANTI                      ║
+    ║       MOD: CONTROLES SEPARADOS PARA VIDA E DISTÂNCIA       ║
     ╚════════════════════════════════════════════════════════════╝
 ]]
 
@@ -13,7 +14,7 @@ local Camera = workspace.CurrentCamera
 local Player = Players.LocalPlayer
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService") -- Para o efeito do botão
+local TweenService = game:GetService("TweenService")
 
 --// [CONFIGURAÇÃO GLOBAL]
 getgenv().SystemConfig = {
@@ -23,13 +24,13 @@ getgenv().SystemConfig = {
     TeamCheck = true,
     HighlightEnabled = false,
     DotEnabled = false,
+    MicroHpEnabled = false,   -- [ADICIONADO]: Controle individual da vida nos pés
+    MicroDistEnabled = false, -- [ADICIONADO]: Controle individual da distância nos pés
     FullBright = false,
     NoShadows = false,
     ClarezaMod = false,
     ShowFPS = false,
-    ShowPlayers = false,
-    InfAmmo = false,
-    NoRecoil = false
+    ShowPlayers = false
 }
 
 local OriginalSettings = {
@@ -70,7 +71,7 @@ end
 local fpsF, fpsL = CreateTag(Color3.fromRGB(0, 255, 120))
 local countF, countL = CreateTag(Color3.fromRGB(255, 255, 0))
 
--- Botão Flutuante Elite (Novo)
+-- Botão Flutuante Elite
 local FloatingBtn = Instance.new("TextButton", ScreenGui)
 FloatingBtn.Visible = false 
 FloatingBtn.Size = UDim2.new(0, 65, 0, 35)
@@ -143,6 +144,42 @@ local function IsBehindWall(targetPart)
     return result ~= nil
 end
 
+--// [FUNÇÃO INTEGRADA DO MICRO-HUD]
+local function CreateMicroDisplay(char)
+    local root = char:WaitForChild("HumanoidRootPart", 5)
+    if not root then return nil end
+    
+    local billboard = root:FindFirstChild("Aguia_MicroHUD")
+    if not billboard then
+        billboard = Instance.new("BillboardGui", root)
+        billboard.Name = "Aguia_MicroHUD"
+        billboard.Size = UDim2.new(0, 35, 0, 12)
+        billboard.AlwaysOnTop = true
+        billboard.ExtentsOffset = Vector3.new(0, -3.7, 0)
+        
+        local bgBar = Instance.new("Frame", billboard)
+        bgBar.Name = "BackgroundBar"
+        bgBar.Size = UDim2.new(1, 0, 0, 2)
+        bgBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        bgBar.BorderSizePixel = 0
+        
+        local mainBar = Instance.new("Frame", bgBar)
+        mainBar.Name = "MainBar"
+        mainBar.Size = UDim2.new(1, 0, 1, 0)
+        mainBar.BorderSizePixel = 0
+        
+        local label = Instance.new("TextLabel", billboard)
+        label.Name = "DistLabel"
+        label.Size = UDim2.new(1, 0, 0, 8)
+        label.Position = UDim2.new(0, 0, 0, 3)
+        label.BackgroundTransparency = 1
+        label.TextSize = 8
+        label.Font = Enum.Font.GothamBold
+        label.TextStrokeTransparency = 0.4
+    end
+    return billboard
+end
+
 --// [INTERFACE RAYFIELD]
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -155,7 +192,6 @@ local Window = Rayfield:CreateWindow({
 })
 
 local CombatTab = Window:CreateTab("🔫 Combate", 10734950020)
-local WeaponTab = Window:CreateTab("🔥 Armamento", 10734951477)
 local VisualTab = Window:CreateTab("👁️ Visual", 10734951477)
 local LightTab = Window:CreateTab("💡 Iluminação", 10734951477)
 local StatusTab = Window:CreateTab("📊 Monitor", 4483362458)
@@ -165,17 +201,17 @@ CombatTab:CreateToggle({
     CurrentValue = false, 
     Callback = function(v) 
         getgenv().SystemConfig.MiraAtiva = v 
-        FloatingBtn.Visible = v -- Sincronizado com o Menu
+        FloatingBtn.Visible = v 
         UpdateBtnVisual(v)
     end 
 })
 CombatTab:CreateSlider({ Name = "Suavidade", Range = {0.1, 1}, Increment = 0.05, CurrentValue = 0.35, Callback = function(v) getgenv().SystemConfig.Smoothness = v end })
 
-WeaponTab:CreateToggle({ Name = "Bala Infinita", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.InfAmmo = v end })
-WeaponTab:CreateToggle({ Name = "Sem Recuo", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.NoRecoil = v end })
-
+-- [BOTÕES SEPARADOS NA ABA VISUAL]
 VisualTab:CreateToggle({ Name = "Ativar Raio-X", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.HighlightEnabled = v end })
 VisualTab:CreateToggle({ Name = "Ponto na Cabeça", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.DotEnabled = v end })
+VisualTab:CreateToggle({ Name = "Micro-HUD: Vida nos Pés", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.MicroHpEnabled = v end }) -- Botão Vida
+VisualTab:CreateToggle({ Name = "Micro-HUD: Distância nos Pés", CurrentValue = false, Callback = function(v) getgenv().SystemConfig.MicroDistEnabled = v end }) -- Botão Distância
 
 LightTab:CreateToggle({ 
     Name = "FullBright", 
@@ -225,25 +261,12 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    if getgenv().SystemConfig.InfAmmo or getgenv().SystemConfig.NoRecoil then
-        local tool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
-        if tool then
-            pcall(function()
-                for _, obj in ipairs(tool:GetDescendants()) do
-                    if getgenv().SystemConfig.InfAmmo and (obj:IsA("IntValue") or obj:IsA("NumberValue")) then
-                        if obj.Name:lower():find("ammo") or obj.Name:lower():find("clip") then
-                            obj.Value = 999
-                        end
-                    end
-                end
-            end)
-        end
-    end
-
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= Player and p.Character then
             local char = p.Character
             local head = char:FindFirstChild("Head")
+            
+            -- [EXECUÇÃO DO SEU VISUAL ORIGINAL: INTACTO]
             if head then
                 local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
                 local statusColor = isTeam and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
@@ -275,8 +298,53 @@ RunService.RenderStepped:Connect(function(dt)
                 dot.Enabled = getgenv().SystemConfig.DotEnabled
                 dot.Frame.BackgroundColor3 = dotColor
             end
+
+            -- [EXECUÇÃO INDEPENDENTE: MICRO-HUD CONTROLADO POR BOTÕES SEPARADOS]
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if hum and root then
+                local hud = root:FindFirstChild("Aguia_MicroHUD")
+                
+                -- Se qualquer uma das duas opções estiver ativada e o player estiver vivo
+                if (getgenv().SystemConfig.MicroHpEnabled or getgenv().SystemConfig.MicroDistEnabled) and hum.Health > 0 then
+                    local currentHud = CreateMicroDisplay(char)
+                    if currentHud then
+                        local isTeam = (p.Team == Player.Team and Player.Team ~= nil)
+                        local teamColor = isTeam and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(255, 50, 50)
+                        
+                        -- Controle da Barrinha de Vida
+                        if getgenv().SystemConfig.MicroHpEnabled then
+                            local healthRatio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                            currentHud.BackgroundBar.MainBar.Size = UDim2.new(healthRatio, 0, 1, 0)
+                            currentHud.BackgroundBar.MainBar.BackgroundColor3 = teamColor
+                            currentHud.BackgroundBar.Visible = true
+                        else
+                            currentHud.BackgroundBar.Visible = false
+                        end
+                        
+                        -- Controle do Texto de Distância
+                        if getgenv().SystemConfig.MicroDistEnabled then
+                            local distance = math.floor(Player:DistanceFromCharacter(root.Position))
+                            currentHud.DistLabel.Text = string.format("%dm", distance)
+                            currentHud.DistLabel.TextColor3 = teamColor
+                            currentHud.DistLabel.Visible = true
+                        else
+                            currentHud.DistLabel.Visible = false
+                        end
+                        
+                        currentHud.Enabled = true
+                    end
+                else
+                    -- Se ambos os botões forem desligados ou o player morrer, apaga o HUD
+                    if hud then
+                        hud.Enabled = false
+                    end
+                end
+            end
+            
         end
     end
 end)
 
-Rayfield:Notify({Title = "SHADOW PROTOCOL LABS", Content = "Sistema Original Restaurado com Botão Elite!", Duration = 5})
+Rayfield:Notify({Title = "SHADOW PROTOCOL LABS", Content = "Otimização Concluída! Pronto para dominar, meu rei!", Duration = 5})
+
